@@ -274,6 +274,7 @@
             gap: 15px;
             align-items: center;
             justify-content: center;
+            flex-wrap: wrap;
         }
 
         .format-option {
@@ -286,6 +287,8 @@
             background: white;
             cursor: pointer;
             transition: all 0.3s ease;
+            min-width: 140px;
+            justify-content: center;
         }
 
         .format-option:hover {
@@ -294,6 +297,12 @@
 
         .format-option input[type="radio"] {
             accent-color: #4f46e5;
+        }
+
+        .format-label {
+            font-weight: 600;
+            color: #374151;
+            margin-right: 20px;
         }
 
         .empty-state {
@@ -314,6 +323,15 @@
             
             .content {
                 padding: 20px;
+            }
+
+            .format-selector {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .format-option {
+                min-width: 180px;
             }
         }
 
@@ -371,14 +389,18 @@
 
                 <!-- Format Selection -->
                 <div class="format-selector">
-                    <span style="font-weight: 600; color: #374151;">Output Format:</span>
+                    <span class="format-label">Output Format:</span>
                     <label class="format-option">
                         <input type="radio" name="format" value="csv" checked>
                         <span>CSV</span>
                     </label>
                     <label class="format-option">
-                        <input type="radio" name="format" value="txt">
+                        <input type="radio" name="format" value="txt-tab">
                         <span>TXT (Tab-separated)</span>
+                    </label>
+                    <label class="format-option">
+                        <input type="radio" name="format" value="txt-comma">
+                        <span>TXT (Comma-separated)</span>
                     </label>
                 </div>
 
@@ -681,8 +703,25 @@
             }
 
             const format = document.querySelector('input[name="format"]:checked').value;
-            const delimiter = format === 'csv' ? ',' : '\t';
-            const extension = format === 'csv' ? '.csv' : '.txt';
+            let delimiter, extension;
+            
+            switch(format) {
+                case 'csv':
+                    delimiter = ',';
+                    extension = '.csv';
+                    break;
+                case 'txt-tab':
+                    delimiter = '\t';
+                    extension = '.txt';
+                    break;
+                case 'txt-comma':
+                    delimiter = ',';
+                    extension = '.txt';
+                    break;
+                default:
+                    delimiter = ',';
+                    extension = '.csv';
+            }
 
             // Create filtered data
             const filteredData = [];
@@ -697,7 +736,7 @@
                     let value = row[headerIndex] || '';
                     
                     // Escape quotes and wrap in quotes if contains delimiter or quotes
-                    if (format === 'csv' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+                    if (delimiter === ',' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
                         value = '"' + value.replace(/"/g, '""') + '"';
                     }
                     
