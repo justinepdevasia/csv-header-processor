@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Header Processor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .upload-section {
+            margin-bottom: 40px;
+        }
+
+        .upload-area {
+            border: 3px dashed #d1d5db;
+            border-radius: 16px;
+            padding: 60px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: rgba(249, 250, 251, 0.5);
+        }
+
+        .upload-area:hover {
+            border-color: #4f46e5;
+            background: rgba(79, 70, 229, 0.05);
+        }
+
+        .upload-area.dragover {
+            border-color: #4f46e5;
+            background: rgba(79, 70, 229, 0.1);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #6b7280;
+            margin-bottom: 16px;
+        }
+
+        .upload-text {
+            font-size: 1.25rem;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .upload-subtext {
+            color: #6b7280;
+            font-size: 0.95rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .headers-section {
+            display: none;
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .headers-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .available-headers, .selected-headers {
+            background: rgba(249, 250, 251, 0.7);
+            border-radius: 16px;
+            padding: 20px;
+            min-height: 300px;
+        }
+
+        .headers-list {
+            min-height: 250px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .header-item {
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            user-select: none;
+        }
+
+        .header-item:hover {
+            border-color: #4f46e5;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+        }
+
+        .header-item.selected {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border-color: #4f46e5;
+        }
+
+        .header-item.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+        }
+
+        .drag-handle {
+            color: #9ca3af;
+            font-size: 1.2rem;
+            cursor: grab;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .selected-headers .header-item {
+            cursor: move;
+        }
+
+        .drop-zone {
+            border: 2px dashed #d1d5db;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            color: #6b7280;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .drop-zone.drag-over {
+            border-color: #4f46e5;
+            background: rgba(79, 70, 229, 0.05);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.9);
+            color: #374151;
+            border: 2px solid #e5e7eb;
+        }
+
+        .btn-secondary:hover {
+            border-color: #4f46e5;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .preview-section {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(249, 250, 251, 0.7);
+            border-radius: 16px;
+        }
+
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+        }
+
+        .preview-table th,
+        .preview-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .preview-table th {
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .format-selector {
+            margin: 20px 0;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .format-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .format-option:hover {
+            border-color: #4f46e5;
+        }
+
+        .format-option input[type="radio"] {
+            accent-color: #4f46e5;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #6b7280;
+            font-style: italic;
+            padding: 40px 20px;
+        }
+
+        @media (max-width: 768px) {
+            .headers-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 CSV Header Processor</h1>
+            <p>Upload, select, reorder, and download your CSV data with ease</p>
+        </div>
+
+        <div class="content">
+            <!-- Upload Section -->
+            <div class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Drop your CSV file here or click to browse</div>
+                    <div class="upload-subtext">Supports CSV files up to 10MB</div>
+                </div>
+                <input type="file" id="fileInput" class="file-input" accept=".csv" />
+            </div>
+
+            <!-- Headers Selection Section -->
+            <div class="headers-section" id="headersSection">
+                <div class="section-title">
+                    🎯 Select and Arrange Headers
+                </div>
+                
+                <div class="headers-grid">
+                    <div class="available-headers">
+                        <h3 style="margin-bottom: 15px; color: #374151;">Available Headers</h3>
+                        <div class="headers-list" id="availableHeaders">
+                            <div class="empty-state">Upload a CSV file to see headers</div>
+                        </div>
+                    </div>
+                    
+                    <div class="selected-headers">
+                        <h3 style="margin-bottom: 15px; color: #374151;">Selected Headers (Drag to Reorder)</h3>
+                        <div class="headers-list" id="selectedHeaders">
+                            <div class="drop-zone" id="dropZone">
+                                Drop headers here to select them
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Format Selection -->
+                <div class="format-selector">
+                    <span style="font-weight: 600; color: #374151;">Output Format:</span>
+                    <label class="format-option">
+                        <input type="radio" name="format" value="csv" checked>
+                        <span>CSV</span>
+                    </label>
+                    <label class="format-option">
+                        <input type="radio" name="format" value="txt">
+                        <span>TXT (Tab-separated)</span>
+                    </label>
+                </div>
+
+                <!-- Controls -->
+                <div class="controls">
+                    <button class="btn btn-secondary" onclick="clearSelection()">🗑️ Clear Selection</button>
+                    <button class="btn btn-primary" onclick="downloadFile()" id="downloadBtn" disabled>
+                        ⬇️ Download File
+                    </button>
+                </div>
+
+                <!-- Preview Section -->
+                <div class="preview-section" id="previewSection">
+                    <h3 style="margin-bottom: 15px; color: #374151;">📋 Preview (First 5 rows)</h3>
+                    <div style="overflow-x: auto;">
+                        <table class="preview-table" id="previewTable"></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let csvData = [];
+        let headers = [];
+        let selectedHeadersOrder = [];
+
+        // File upload handling
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const headersSection = document.getElementById('headersSection');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('dragleave', handleDragLeave);
+        uploadArea.addEventListener('drop', handleDrop);
+        fileInput.addEventListener('change', handleFileSelect);
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                processFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                processFile(file);
+            }
+        }
+
+        function processFile(file) {
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                alert('Please select a CSV file');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                parseCSV(e.target.result);
+            };
+            reader.readAsText(file);
+        }
+
+        function parseCSV(csvText) {
+            const lines = csvText.split('\n').filter(line => line.trim());
+            if (lines.length === 0) return;
+
+            // Parse headers
+            headers = parseCSVLine(lines[0]);
+            
+            // Parse data
+            csvData = [];
+            for (let i = 1; i < lines.length; i++) {
+                const row = parseCSVLine(lines[i]);
+                if (row.length === headers.length) {
+                    csvData.push(row);
+                }
+            }
+
+            displayHeaders();
+            headersSection.style.display = 'block';
+            headersSection.classList.add('fade-in');
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            
+            result.push(current.trim());
+            return result.map(field => field.replace(/^"|"$/g, ''));
+        }
+
+        function displayHeaders() {
+            const availableHeadersDiv = document.getElementById('availableHeaders');
+            availableHeadersDiv.innerHTML = '';
+
+            headers.forEach((header, index) => {
+                const headerItem = document.createElement('div');
+                headerItem.className = 'header-item';
+                headerItem.draggable = true;
+                headerItem.dataset.header = header;
+                headerItem.innerHTML = `
+                    <span>${header}</span>
+                    <span class="drag-handle">⋮⋮</span>
+                `;
+
+                headerItem.addEventListener('dragstart', handleHeaderDragStart);
+                headerItem.addEventListener('click', () => selectHeader(header));
+                
+                availableHeadersDiv.appendChild(headerItem);
+            });
+        }
+
+        function selectHeader(header) {
+            if (!selectedHeadersOrder.includes(header)) {
+                selectedHeadersOrder.push(header);
+                updateSelectedHeaders();
+                updatePreview();
+            }
+        }
+
+        function updateSelectedHeaders() {
+            const selectedHeadersDiv = document.getElementById('selectedHeaders');
+            
+            if (selectedHeadersOrder.length === 0) {
+                selectedHeadersDiv.innerHTML = '<div class="drop-zone" id="dropZone">Drop headers here to select them</div>';
+                setupDropZone();
+                document.getElementById('downloadBtn').disabled = true;
+                return;
+            }
+
+            selectedHeadersDiv.innerHTML = '';
+            selectedHeadersOrder.forEach((header, index) => {
+                const headerItem = document.createElement('div');
+                headerItem.className = 'header-item selected';
+                headerItem.draggable = true;
+                headerItem.dataset.header = header;
+                headerItem.innerHTML = `
+                    <span>${header}</span>
+                    <div>
+                        <span class="drag-handle">⋮⋮</span>
+                        <button onclick="removeHeader('${header}')" style="background:none;border:none;color:white;cursor:pointer;margin-left:10px;">✕</button>
+                    </div>
+                `;
+
+                headerItem.addEventListener('dragstart', handleSelectedHeaderDragStart);
+                headerItem.addEventListener('dragover', handleDragOver);
+                headerItem.addEventListener('drop', handleSelectedHeaderDrop);
+                
+                selectedHeadersDiv.appendChild(headerItem);
+            });
+
+            setupDropZone();
+            document.getElementById('downloadBtn').disabled = false;
+        }
+
+        function setupDropZone() {
+            const selectedHeadersDiv = document.getElementById('selectedHeaders');
+            selectedHeadersDiv.addEventListener('dragover', handleDropZoneDragOver);
+            selectedHeadersDiv.addEventListener('drop', handleDropZoneDrop);
+        }
+
+        function removeHeader(header) {
+            selectedHeadersOrder = selectedHeadersOrder.filter(h => h !== header);
+            updateSelectedHeaders();
+            updatePreview();
+        }
+
+        function clearSelection() {
+            selectedHeadersOrder = [];
+            updateSelectedHeaders();
+            updatePreview();
+        }
+
+        // Drag and drop functionality
+        let draggedHeader = null;
+        let draggedIndex = null;
+
+        function handleHeaderDragStart(e) {
+            draggedHeader = e.target.dataset.header;
+            e.target.classList.add('dragging');
+        }
+
+        function handleSelectedHeaderDragStart(e) {
+            draggedHeader = e.target.dataset.header;
+            draggedIndex = selectedHeadersOrder.indexOf(draggedHeader);
+            e.target.classList.add('dragging');
+        }
+
+        function handleDropZoneDragOver(e) {
+            e.preventDefault();
+        }
+
+        function handleDropZoneDrop(e) {
+            e.preventDefault();
+            
+            if (draggedHeader && !selectedHeadersOrder.includes(draggedHeader)) {
+                selectedHeadersOrder.push(draggedHeader);
+                updateSelectedHeaders();
+                updatePreview();
+            }
+            
+            // Reset drag state
+            document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+            draggedHeader = null;
+        }
+
+        function handleSelectedHeaderDrop(e) {
+            e.preventDefault();
+            const targetHeader = e.target.closest('.header-item').dataset.header;
+            const targetIndex = selectedHeadersOrder.indexOf(targetHeader);
+            
+            if (draggedIndex !== null && draggedIndex !== targetIndex) {
+                // Reorder headers
+                selectedHeadersOrder.splice(draggedIndex, 1);
+                selectedHeadersOrder.splice(targetIndex, 0, draggedHeader);
+                updateSelectedHeaders();
+                updatePreview();
+            }
+            
+            // Reset drag state
+            document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+            draggedHeader = null;
+            draggedIndex = null;
+        }
+
+        function updatePreview() {
+            if (selectedHeadersOrder.length === 0) {
+                document.getElementById('previewSection').style.display = 'none';
+                return;
+            }
+
+            const previewSection = document.getElementById('previewSection');
+            const previewTable = document.getElementById('previewTable');
+            
+            // Create table header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            selectedHeadersOrder.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+
+            // Create table body with first 5 rows
+            const tbody = document.createElement('tbody');
+            const previewData = csvData.slice(0, 5);
+            
+            previewData.forEach(row => {
+                const tr = document.createElement('tr');
+                selectedHeadersOrder.forEach(header => {
+                    const headerIndex = headers.indexOf(header);
+                    const td = document.createElement('td');
+                    td.textContent = row[headerIndex] || '';
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+
+            previewTable.innerHTML = '';
+            previewTable.appendChild(thead);
+            previewTable.appendChild(tbody);
+            
+            previewSection.style.display = 'block';
+        }
+
+        function downloadFile() {
+            if (selectedHeadersOrder.length === 0) {
+                alert('Please select at least one header');
+                return;
+            }
+
+            const format = document.querySelector('input[name="format"]:checked').value;
+            const delimiter = format === 'csv' ? ',' : '\t';
+            const extension = format === 'csv' ? '.csv' : '.txt';
+
+            // Create filtered data
+            const filteredData = [];
+            
+            // Add headers
+            filteredData.push(selectedHeadersOrder.join(delimiter));
+            
+            // Add data rows
+            csvData.forEach(row => {
+                const filteredRow = selectedHeadersOrder.map(header => {
+                    const headerIndex = headers.indexOf(header);
+                    let value = row[headerIndex] || '';
+                    
+                    // Escape quotes and wrap in quotes if contains delimiter or quotes
+                    if (format === 'csv' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+                        value = '"' + value.replace(/"/g, '""') + '"';
+                    }
+                    
+                    return value;
+                });
+                filteredData.push(filteredRow.join(delimiter));
+            });
+
+            // Create and download file
+            const content = filteredData.join('\n');
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'processed_data' + extension;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
